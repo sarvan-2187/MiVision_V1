@@ -7,9 +7,22 @@ Usage:
 """
 
 import io
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+from reportlab.lib import colors as rl_colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    Image as RLImage,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 import streamlit as st
 from inference import DEFAULT_CONF, DEFAULT_MODEL_PATH, detect, load_model
@@ -52,6 +65,66 @@ def draw_detections(image: Image.Image, detections: list[dict], colors: dict[str
         )
         draw.text((x1 + 2, y1 - 2), label, fill="white", font=font)
     return annotated
+
+
+def build_pdf_report(
+    annotated: Image.Image,
+    detections: list[dict],
+    source_name: str | None,
+    conf: float,
+) -> bytes:
+    """Build a PDF detection report with the annotated image and a results table."""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.6 * inch, bottomMargin=0.6 * inch)
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("MiVision Detection Report", styles["Title"]),
+        Paragraph(f"Image: {source_name or 'unknown'}", styles["Normal"]),
+        Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]),
+        Paragraph(f"Confidence threshold: {conf:.2f}", styles["Normal"]),
+        Spacer(1, 0.2 * inch),
+    ]
+
+    img_buf = io.BytesIO()
+    annotated.convert("RGB").save(img_buf, format="PNG")
+    img_buf.seek(0)
+    max_width = 6.5 * inch
+    scale = min(1.0, max_width / annotated.width)
+    story.append(RLImage(img_buf, width=annotated.width * scale, height=annotated.height * scale))
+    story.append(Spacer(1, 0.25 * inch))
+
+    if detections:
+        story.append(Paragraph(f"Detections ({len(detections)})", styles["Heading2"]))
+        table_data = [["Class", "Confidence", "Bounding box (x1, y1, x2, y2)"]]
+        for det in sorted(detections, key=lambda d: -d["confidence"]):
+            x1, y1, x2, y2 = det["bbox"]
+            table_data.append([
+                det["class_name"],
+                f"{det['confidence']:.2%}",
+                f"({x1:.0f}, {y1:.0f}, {x2:.0f}, {y2:.0f})",
+            ])
+        table = Table(table_data, hAlign="LEFT", colWidths=[1.5 * inch, 1.2 * inch, 2.8 * inch])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), rl_colors.HexColor("#333333")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), rl_colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.5, rl_colors.grey),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [rl_colors.white, rl_colors.HexColor("#f5f5f5")]),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(table)
+    else:
+        story.append(Paragraph(f"No aircraft detected above the {conf:.2f} confidence threshold.", styles["Normal"]))
+
+    story.append(Spacer(1, 0.3 * inch))
+    story.append(Paragraph(
+        "Disclaimer: The model's confidence depends on the quality of the uploaded image. "
+        "Try uploading a higher-quality image for better detection results and confidence.",
+        styles["Italic"],
+    ))
+
+    doc.build(story)
+    return buf.getvalue()
 
 
 st.set_page_config(page_title="MiVision - Military Aircraft Detection", layout="wide")
@@ -150,13 +223,21 @@ if image is not None:
             c1.color_picker("", colors.get(det["class_name"], "#ff4040"), key=id(det), disabled=True, label_visibility="collapsed")
             c2.write(f"**{det['class_name']}**")
             c3.progress(det["confidence"], text=f"{det['confidence']:.2%}")
-
-        buf = io.BytesIO()
-        annotated.save(buf, format="PNG")
-        st.download_button("Download annotated image", buf.getvalue(),
-                            file_name="mivision_detection.png", mime="image/png")
     else:
         st.info(f"No aircraft detected above the {conf:.2f} confidence threshold. Try lowering it in the sidebar.")
+
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        png_buf = io.BytesIO()
+        annotated.save(png_buf, format="PNG")
+        st.download_button("Download annotated image", png_buf.getvalue(),
+                            file_name="mivision_detection.png", mime="image/png",
+                            use_container_width=True)
+    with dl_col2:
+        pdf_bytes = build_pdf_report(annotated, detections, source_name, conf)
+        st.download_button("Download PDF report", pdf_bytes,
+                            file_name="mivision_detection_report.pdf", mime="application/pdf",
+                            use_container_width=True)
 else:
     st.info("Upload an image or pick a sample above to get started.")
 

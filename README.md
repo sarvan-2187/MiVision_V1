@@ -49,7 +49,9 @@ streamlit run app.py
 
 Upload an image; detections are drawn with class label and confidence at a
 0.4 confidence threshold (see [Results](#v1-results) for why - it's the
-peak of the F1-confidence curve, not YOLO's default of 0.25).
+peak of the F1-confidence curve, not YOLO's default of 0.25). The
+annotated image and a full detection report (image, per-class confidence
+table, threshold used) are both downloadable, as PNG and PDF respectively.
 
 **Retraining** requires re-obtaining and re-curating the dataset first -
 follow [DATASET.md](dataset/DATASET.md) and the [Scripts](#scripts) below,

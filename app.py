@@ -9,6 +9,7 @@ Usage:
 import io
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib import colors as rl_colors
@@ -23,6 +24,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+IST = ZoneInfo("Asia/Kolkata")
 
 import streamlit as st
 from inference import DEFAULT_CONF, DEFAULT_MODEL_PATH, detect, load_model
@@ -67,6 +70,17 @@ def draw_detections(image: Image.Image, detections: list[dict], colors: dict[str
     return annotated
 
 
+def draw_page_border(canvas, doc):
+    """Draw a border frame around the page, inset from the edges."""
+    canvas.saveState()
+    inset = 0.3 * inch
+    width, height = letter
+    canvas.setStrokeColor(rl_colors.HexColor("#333333"))
+    canvas.setLineWidth(1.2)
+    canvas.rect(inset, inset, width - 2 * inset, height - 2 * inset)
+    canvas.restoreState()
+
+
 def build_pdf_report(
     annotated: Image.Image,
     detections: list[dict],
@@ -77,10 +91,11 @@ def build_pdf_report(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.6 * inch, bottomMargin=0.6 * inch)
     styles = getSampleStyleSheet()
+    generated_at = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S IST")
     story = [
         Paragraph("MiVision Detection Report", styles["Title"]),
         Paragraph(f"Image: {source_name or 'unknown'}", styles["Normal"]),
-        Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]),
+        Paragraph(f"Generated: {generated_at}", styles["Normal"]),
         Paragraph(f"Confidence threshold: {conf:.2f}", styles["Normal"]),
         Spacer(1, 0.2 * inch),
     ]
@@ -123,7 +138,7 @@ def build_pdf_report(
         styles["Italic"],
     ))
 
-    doc.build(story)
+    doc.build(story, onFirstPage=draw_page_border, onLaterPages=draw_page_border)
     return buf.getvalue()
 
 

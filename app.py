@@ -202,7 +202,7 @@ with st.sidebar:
 
 st.title("Military Aircraft Detection")
 
-tab_upload, tab_camera = st.tabs(["📁  Upload Image", "📷  Live Camera"])
+tab_upload, tab_camera = st.tabs(["Upload Image", "Live Camera"])
 
 with tab_upload:
     uploaded = st.file_uploader(
@@ -307,7 +307,7 @@ else:
 
 st.divider()
 st.caption(
-    "⚠️ Disclaimer: The model's confidence depends on the quality of the "
+    "Disclaimer: The model's confidence depends on the quality of the "
     "uploaded image. Try uploading a higher-quality image for better "
     "detection results and confidence."
 )

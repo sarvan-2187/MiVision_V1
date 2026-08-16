@@ -1,0 +1,18 @@
+# Raw / curated dataset images - not committed (see dataset/DATASET.md)
+dataset/*
+!dataset/DATASET.md
+
+# Training checkpoints - large, not needed to run inference (model/best.pt is)
+mivision_run/weights/epoch*.pt
+mivision_run_v2/weights/epoch*.pt
+mivision_run_v3/weights/epoch*.pt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

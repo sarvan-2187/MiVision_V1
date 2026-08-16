@@ -28,6 +28,7 @@ from reportlab.platypus import (
 IST = ZoneInfo("Asia/Kolkata")
 
 import streamlit as st
+import streamlit.components.v1 as components
 from inference import DEFAULT_CONF, DEFAULT_MODEL_PATH, detect, load_model
 
 # Fixed, distinct palette so the same class always gets the same color.
@@ -206,6 +207,16 @@ if image is not None:
     new_image = st.session_state.get("source_name") != source_name
 
     if new_image or run or "detections" not in st.session_state:
+        st.markdown('<div id="inference-anchor"></div>', unsafe_allow_html=True)
+        components.html(
+            """
+            <script>
+            var el = window.parent.document.getElementById('inference-anchor');
+            if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+            </script>
+            """,
+            height=0,
+        )
         model = get_model()
         with st.spinner("Running inference..."):
             st.session_state.detections = detect(model, image, conf=conf)

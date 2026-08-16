@@ -159,3 +159,10 @@ if image is not None:
         st.info(f"No aircraft detected above the {conf:.2f} confidence threshold. Try lowering it in the sidebar.")
 else:
     st.info("Upload an image or pick a sample above to get started.")
+
+st.divider()
+st.caption(
+    "⚠️ Disclaimer: The model's confidence depends on the quality of the "
+    "uploaded image. Try uploading a higher-quality image for better "
+    "detection results and confidence."
+)

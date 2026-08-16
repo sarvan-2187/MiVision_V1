@@ -157,26 +157,58 @@ st.markdown(
         font-family: 'Material Symbols Rounded' !important;
     }
     [data-testid="stFileUploaderDropzone"] {
-        padding: 3.5rem 2rem !important;
-        min-height: 260px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        gap: 1rem !important;
+        padding: 3rem 2rem !important;
+        min-height: 220px !important;
         border: 2px dashed #4363d8 !important;
         border-radius: 18px !important;
         background: rgba(67, 99, 216, 0.05) !important;
-        transition: background 0.15s ease, border-color 0.15s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
     [data-testid="stFileUploaderDropzone"]:hover {
         background: rgba(67, 99, 216, 0.1) !important;
         border-color: #3cb44b !important;
+        box-shadow: 0 4px 18px rgba(60, 180, 75, 0.18);
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 0.35rem !important;
+        order: 1;
     }
     [data-testid="stFileUploaderDropzoneInstructions"] svg {
-        width: 3.2rem !important;
-        height: 3.2rem !important;
+        width: 3rem !important;
+        height: 3rem !important;
+        opacity: 0.85;
     }
     [data-testid="stFileUploaderDropzoneInstructions"] span {
-        font-size: 1.15rem !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
     }
     [data-testid="stFileUploaderDropzoneInstructions"] small {
-        font-size: 0.95rem !important;
+        font-size: 0.9rem !important;
+        opacity: 0.7;
+    }
+    [data-testid="stFileUploaderDropzone"] button {
+        order: 2;
+        border-radius: 999px !important;
+        padding: 0.5rem 1.5rem !important;
+        border: 1px solid #4363d8 !important;
+        font-weight: 600 !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    [data-testid="stFileUploaderDropzone"] button:hover {
+        transform: translateY(-1px);
+        border-color: #3cb44b !important;
+        box-shadow: 0 4px 14px rgba(60, 180, 75, 0.3);
     }
     </style>
     """,

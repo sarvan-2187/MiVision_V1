@@ -234,36 +234,25 @@ with st.sidebar:
 
 st.title("Military Aircraft Detection")
 
-tab_upload, tab_camera = st.tabs(["Upload Image", "Live Camera"])
+uploaded = st.file_uploader(
+    "Drag and drop an image here, or click to browse",
+    type=["jpg", "jpeg", "png"],
+    key="uploader",
+)
 
-with tab_upload:
-    uploaded = st.file_uploader(
-        "Drag and drop an image here, or click to browse",
-        type=["jpg", "jpeg", "png"],
-        key="uploader",
-    )
-
-    sample_paths = sorted(Path("sample_images").glob("*"))
-    if sample_paths:
-        st.caption("Or try a sample image")
-        sample_cols = st.columns(len(sample_paths))
-        for col, path in zip(sample_cols, sample_paths):
-            with col:
-                st.image(str(path), use_container_width=True)
-                if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
-                    st.session_state.selected_sample = str(path)
-                    st.session_state.camera = None
-
-with tab_camera:
-    camera_capture = st.camera_input("Take a photo", key="camera")
+sample_paths = sorted(Path("sample_images").glob("*"))
+if sample_paths:
+    st.caption("Or try a sample image")
+    sample_cols = st.columns(len(sample_paths))
+    for col, path in zip(sample_cols, sample_paths):
+        with col:
+            st.image(str(path), use_container_width=True)
+            if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
+                st.session_state.selected_sample = str(path)
 
 if uploaded is not None:
     source_name = uploaded.name
     image = Image.open(uploaded)
-    st.session_state.pop("selected_sample", None)
-elif camera_capture is not None:
-    source_name = "camera_capture.jpg"
-    image = Image.open(camera_capture)
     st.session_state.pop("selected_sample", None)
 elif st.session_state.get("selected_sample"):
     source_name = st.session_state["selected_sample"]

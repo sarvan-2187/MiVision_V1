@@ -156,6 +156,28 @@ st.markdown(
     [data-testid="stIconMaterial"], [class*="material-symbols"], i.material-symbols-rounded {
         font-family: 'Material Symbols Rounded' !important;
     }
+    [data-testid="stFileUploaderDropzone"] {
+        padding: 3.5rem 2rem !important;
+        min-height: 260px !important;
+        border: 2px dashed #4363d8 !important;
+        border-radius: 18px !important;
+        background: rgba(67, 99, 216, 0.05) !important;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    [data-testid="stFileUploaderDropzone"]:hover {
+        background: rgba(67, 99, 216, 0.1) !important;
+        border-color: #3cb44b !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] svg {
+        width: 3.2rem !important;
+        height: 3.2rem !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] span {
+        font-size: 1.15rem !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] small {
+        font-size: 0.95rem !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -180,26 +202,42 @@ with st.sidebar:
 
 st.title("Military Aircraft Detection")
 
-uploaded = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+tab_upload, tab_camera = st.tabs(["📁  Upload Image", "📷  Live Camera"])
 
-sample_paths = sorted(Path("sample_images").glob("*"))
-if sample_paths:
-    st.caption("Or try a sample image")
-    sample_cols = st.columns(len(sample_paths))
-    for col, path in zip(sample_cols, sample_paths):
-        with col:
-            st.image(str(path), use_container_width=True)
-            if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
-                st.session_state.selected_sample = str(path)
-                st.session_state.pop("uploaded_name", None)
+with tab_upload:
+    uploaded = st.file_uploader(
+        "Drag and drop an image here, or click to browse",
+        type=["jpg", "jpeg", "png"],
+        key="uploader",
+    )
 
-source_name = uploaded.name if uploaded is not None else st.session_state.get("selected_sample")
+    sample_paths = sorted(Path("sample_images").glob("*"))
+    if sample_paths:
+        st.caption("Or try a sample image")
+        sample_cols = st.columns(len(sample_paths))
+        for col, path in zip(sample_cols, sample_paths):
+            with col:
+                st.image(str(path), use_container_width=True)
+                if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
+                    st.session_state.selected_sample = str(path)
+                    st.session_state.camera = None
+
+with tab_camera:
+    camera_capture = st.camera_input("Take a photo", key="camera")
 
 if uploaded is not None:
+    source_name = uploaded.name
     image = Image.open(uploaded)
+    st.session_state.pop("selected_sample", None)
+elif camera_capture is not None:
+    source_name = "camera_capture.jpg"
+    image = Image.open(camera_capture)
+    st.session_state.pop("selected_sample", None)
 elif st.session_state.get("selected_sample"):
+    source_name = st.session_state["selected_sample"]
     image = Image.open(st.session_state["selected_sample"])
 else:
+    source_name = None
     image = None
 
 if image is not None:

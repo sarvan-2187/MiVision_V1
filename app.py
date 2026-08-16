@@ -7,6 +7,7 @@ Usage:
 """
 
 import io
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -92,17 +93,36 @@ st.title("Military Aircraft Detection")
 
 uploaded = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
+sample_paths = sorted(Path("sample_images").glob("*"))
+if sample_paths:
+    st.caption("Or try a sample image")
+    sample_cols = st.columns(len(sample_paths))
+    for col, path in zip(sample_cols, sample_paths):
+        with col:
+            st.image(str(path), use_container_width=True)
+            if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
+                st.session_state.selected_sample = str(path)
+                st.session_state.pop("uploaded_name", None)
+
+source_name = uploaded.name if uploaded is not None else st.session_state.get("selected_sample")
+
 if uploaded is not None:
     image = Image.open(uploaded)
+elif st.session_state.get("selected_sample"):
+    image = Image.open(st.session_state["selected_sample"])
+else:
+    image = None
+
+if image is not None:
     run = st.button("Run Detection", type="primary", use_container_width=False)
-    new_image = st.session_state.get("uploaded_name") != uploaded.name
+    new_image = st.session_state.get("source_name") != source_name
 
     if new_image or run or "detections" not in st.session_state:
         model = get_model()
         with st.spinner("Running inference..."):
             st.session_state.detections = detect(model, image, conf=conf)
             st.session_state.colors = class_colors(model)
-            st.session_state.uploaded_name = uploaded.name
+            st.session_state.source_name = source_name
 
     detections = st.session_state.get("detections", [])
     colors = st.session_state.get("colors", {})
@@ -138,4 +158,4 @@ if uploaded is not None:
     else:
         st.info(f"No aircraft detected above the {conf:.2f} confidence threshold. Try lowering it in the sidebar.")
 else:
-    st.info("Upload an image to get started.")
+    st.info("Upload an image or pick a sample above to get started.")

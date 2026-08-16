@@ -9,6 +9,7 @@ Usage:
 import io
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib import colors as rl_colors
@@ -24,7 +25,10 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+IST = ZoneInfo("Asia/Kolkata")
+
 import streamlit as st
+import streamlit.components.v1 as components
 from inference import DEFAULT_CONF, DEFAULT_MODEL_PATH, detect, load_model
 
 # Fixed, distinct palette so the same class always gets the same color.
@@ -67,6 +71,17 @@ def draw_detections(image: Image.Image, detections: list[dict], colors: dict[str
     return annotated
 
 
+def draw_page_border(canvas, doc):
+    """Draw a border frame around the page, inset from the edges."""
+    canvas.saveState()
+    inset = 0.3 * inch
+    width, height = letter
+    canvas.setStrokeColor(rl_colors.HexColor("#333333"))
+    canvas.setLineWidth(1.2)
+    canvas.rect(inset, inset, width - 2 * inset, height - 2 * inset)
+    canvas.restoreState()
+
+
 def build_pdf_report(
     annotated: Image.Image,
     detections: list[dict],
@@ -77,10 +92,11 @@ def build_pdf_report(
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.6 * inch, bottomMargin=0.6 * inch)
     styles = getSampleStyleSheet()
+    generated_at = datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S IST")
     story = [
         Paragraph("MiVision Detection Report", styles["Title"]),
         Paragraph(f"Image: {source_name or 'unknown'}", styles["Normal"]),
-        Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles["Normal"]),
+        Paragraph(f"Generated: {generated_at}", styles["Normal"]),
         Paragraph(f"Confidence threshold: {conf:.2f}", styles["Normal"]),
         Spacer(1, 0.2 * inch),
     ]
@@ -123,7 +139,7 @@ def build_pdf_report(
         styles["Italic"],
     ))
 
-    doc.build(story)
+    doc.build(story, onFirstPage=draw_page_border, onLaterPages=draw_page_border)
     return buf.getvalue()
 
 
@@ -139,6 +155,28 @@ st.markdown(
     }
     [data-testid="stIconMaterial"], [class*="material-symbols"], i.material-symbols-rounded {
         font-family: 'Material Symbols Rounded' !important;
+    }
+    [data-testid="stFileUploaderDropzone"] {
+        padding: 3.5rem 2rem !important;
+        min-height: 260px !important;
+        border: 2px dashed #4363d8 !important;
+        border-radius: 18px !important;
+        background: rgba(67, 99, 216, 0.05) !important;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    [data-testid="stFileUploaderDropzone"]:hover {
+        background: rgba(67, 99, 216, 0.1) !important;
+        border-color: #3cb44b !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] svg {
+        width: 3.2rem !important;
+        height: 3.2rem !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] span {
+        font-size: 1.15rem !important;
+    }
+    [data-testid="stFileUploaderDropzoneInstructions"] small {
+        font-size: 0.95rem !important;
     }
     </style>
     """,
@@ -164,26 +202,42 @@ with st.sidebar:
 
 st.title("Military Aircraft Detection")
 
-uploaded = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
+tab_upload, tab_camera = st.tabs(["📁  Upload Image", "📷  Live Camera"])
 
-sample_paths = sorted(Path("sample_images").glob("*"))
-if sample_paths:
-    st.caption("Or try a sample image")
-    sample_cols = st.columns(len(sample_paths))
-    for col, path in zip(sample_cols, sample_paths):
-        with col:
-            st.image(str(path), use_container_width=True)
-            if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
-                st.session_state.selected_sample = str(path)
-                st.session_state.pop("uploaded_name", None)
+with tab_upload:
+    uploaded = st.file_uploader(
+        "Drag and drop an image here, or click to browse",
+        type=["jpg", "jpeg", "png"],
+        key="uploader",
+    )
 
-source_name = uploaded.name if uploaded is not None else st.session_state.get("selected_sample")
+    sample_paths = sorted(Path("sample_images").glob("*"))
+    if sample_paths:
+        st.caption("Or try a sample image")
+        sample_cols = st.columns(len(sample_paths))
+        for col, path in zip(sample_cols, sample_paths):
+            with col:
+                st.image(str(path), use_container_width=True)
+                if st.button("Use this image", key=f"sample_{path.name}", use_container_width=True):
+                    st.session_state.selected_sample = str(path)
+                    st.session_state.camera = None
+
+with tab_camera:
+    camera_capture = st.camera_input("Take a photo", key="camera")
 
 if uploaded is not None:
+    source_name = uploaded.name
     image = Image.open(uploaded)
+    st.session_state.pop("selected_sample", None)
+elif camera_capture is not None:
+    source_name = "camera_capture.jpg"
+    image = Image.open(camera_capture)
+    st.session_state.pop("selected_sample", None)
 elif st.session_state.get("selected_sample"):
+    source_name = st.session_state["selected_sample"]
     image = Image.open(st.session_state["selected_sample"])
 else:
+    source_name = None
     image = None
 
 if image is not None:
@@ -191,6 +245,16 @@ if image is not None:
     new_image = st.session_state.get("source_name") != source_name
 
     if new_image or run or "detections" not in st.session_state:
+        st.markdown('<div id="inference-anchor"></div>', unsafe_allow_html=True)
+        components.html(
+            """
+            <script>
+            var el = window.parent.document.getElementById('inference-anchor');
+            if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+            </script>
+            """,
+            height=0,
+        )
         model = get_model()
         with st.spinner("Running inference..."):
             st.session_state.detections = detect(model, image, conf=conf)

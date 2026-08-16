@@ -47,7 +47,8 @@ repo, `dataset/` is not needed):
 streamlit run app.py
 ```
 
-Upload an image; detections are drawn with class label and confidence at a
+Upload an image via drag-and-drop, pick a sample image, or capture one live
+from your camera; detections are drawn with class label and confidence at a
 0.4 confidence threshold (see [Results](#v1-results) for why - it's the
 peak of the F1-confidence curve, not YOLO's default of 0.25). The
 annotated image and a full detection report (image, per-class confidence
